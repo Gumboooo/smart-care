@@ -1,0 +1,59 @@
+name: Build Smart Care Watch Android APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'Smart_Care_Watch_Flutter_MVP.zip'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check project ZIP exists
+        shell: bash
+        run: |
+          test -f Smart_Care_Watch_Flutter_MVP.zip || {
+            echo "::error::Upload Smart_Care_Watch_Flutter_MVP.zip to repository root using Add file > Upload files.";
+            exit 1;
+          }
+      
+      - name: Extract Flutter project
+        run: unzip -q Smart_Care_Watch_Flutter_MVP.zip -d source
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Create Android wrapper and download dependencies
+        working-directory: source/smart_care_watch
+        run: |
+          flutter create . --project-name smart_care_watch --platforms=android
+          flutter pub get
+
+      - name: Compile release APK
+        working-directory: source/smart_care_watch
+        run: flutter build apk --release
+
+      - name: Publish installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Smart_Care_Watch_APK
+          path: source/smart_care_watch/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
